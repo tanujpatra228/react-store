@@ -22,7 +22,7 @@ const Register = () => {
         } else if (value.email === ''){
             alert('Email is reuired!');
         } else if (value.dob === ''){
-            alert('MRP must be greater then 0!');
+            alert('Please select DOB!');
         } else if (value.password <= 0){
             alert('Please enter password!');
         } else if (value.passwordConf === null){
