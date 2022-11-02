@@ -27,7 +27,7 @@ const Register = () => {
             alert('Please enter password!');
         } else if (value.passwordConf === null){
             alert('Please enter same password!');
-        } else if (value.password === value.passwordConf){
+        } else if (value.password !== value.passwordConf){
             alert('Passwords must match!');
         } else {
             isValid = true;
