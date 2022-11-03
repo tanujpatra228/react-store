@@ -6,15 +6,12 @@ import { actionCreators } from "../../store";
 const Logout = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const auth = useSelector(store => store.auth);
+    const auth = useSelector(store => store.auth.currUser);
     useEffect(()=>{
-        navigate('/login');
-        return () => {
-            if (Object.keys(auth).length) {
-                dispatch(actionCreators.LogOut());
-                localStorage.removeItem('token');
-            }
+        if (Object.keys(auth).length) {
+            dispatch(actionCreators.LogOut());
         }
+        navigate('/login');
     }, [navigate, dispatch, auth]);
     return <>Loging out...</>;
 }

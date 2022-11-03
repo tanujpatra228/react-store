@@ -33,10 +33,8 @@ const Login = () => {
         }).then((res)=>{
             if (!res.data.status){
                 alert(res.data.message);
-                localStorage.removeItem('token');
             } else {
                 dispatch(actionCreators.LogIn(res.data));
-                localStorage.setItem('token', res.data.token);
                 alert('Login Success!');
                 navigate('/profile');
             }

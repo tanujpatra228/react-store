@@ -8,7 +8,7 @@ import ProductList from '../../common/ProductList';
 const Home = () => {
 
     const navigate = useNavigate();
-    const auth = useSelector(store => store.auth);
+    const auth = useSelector(store => store.auth.currUser);
 
     useEffect(() => {
         if (!Object.keys(auth).length) {

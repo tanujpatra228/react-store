@@ -14,7 +14,7 @@ const Profile = () => {
     const imageField = useRef();
     const profileImage = useRef();
     const navigate = useNavigate();
-    const auth = useSelector(store => store.auth);
+    const auth = useSelector(store => store.auth.currUser);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(()=>{

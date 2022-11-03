@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 
 const Nav = () => {
-    const auth = useSelector(store => store.auth);
+    const auth = useSelector(store => store.auth.currUser);
     return (
         <>
         <div className='p-5 shadow-lg absolute top-0 right-0 left-0'>

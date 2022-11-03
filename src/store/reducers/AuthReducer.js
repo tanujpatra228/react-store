@@ -1,13 +1,20 @@
-const AuthReducer = (initialState = {}, action) => {
+const initialState = {
+    currUser: {}
+};
+
+const AuthReducer = (state = initialState, action) => {
     switch (action.type){
         case 'LOGIN':
-            return action.payload;
+            return {
+                ...state,
+                currUser: action.payload
+            };
 
         case 'LOGOUT':
-            return action.payload;
+            return initialState;
             
         default:
-            return {};
+            return initialState;
     }
 }
 
