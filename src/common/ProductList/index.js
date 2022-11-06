@@ -5,6 +5,7 @@ import { Stack, IconButton } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Link } from "react-router-dom";
+import { toast } from 'react-toastify';
 
 const ProductList = ({auth}) => {
     const [products, setProducts] = useState([]);
@@ -45,7 +46,7 @@ const ProductList = ({auth}) => {
             cell: (row) => {
                 return(
                     <Stack spacing={2} direction="row">
-                        <Link to={{pathname:`/product/edit`, search: `?id=${row.id}`, state: {'name':row.id}}}><IconButton aria-label="Edit" color="primary" size="small" disableElevation><EditIcon/></IconButton></Link>
+                        <Link to={{pathname:`/product/edit/${row.id}`, state: {'name':row.id}}}><IconButton aria-label="Edit" color="primary" size="small" disableElevation><EditIcon/></IconButton></Link>
                         <IconButton aria-label="Delete" color="error" size="small" disableElevation onClick={() => deleteProduct(row.id)}><DeleteIcon/></IconButton>
                     </Stack>
                 )
@@ -67,10 +68,13 @@ const ProductList = ({auth}) => {
             if (res.data.status) {
                 setTotalRows(res.data.data.total);
                 setProducts(res.data.data.data);
+            } else {
+                toast.error(`Something went wrong!`);
             }
             setIsLoading(false);
         }).catch((error) => {
-            console.log('error', error.message);
+            toast.error(`Something went wrong! ${error.message}`);
+            console.log('error', error);
         });
     }
 
@@ -84,9 +88,12 @@ const ProductList = ({auth}) => {
             if (res.data.status) {
                 const currPage = localStorage.getItem('currPage') || 1;
                 getProducts(currPage);
-                alert(`${res.data.message}`);
+                toast.success(`Product deleated`);
+            } else {
+                toast.error(`Something went wrong! ${res.data.message}`);
             }
         }).catch((error) => {
+            toast.error(`Something went wrong! ${error.message}`);
             console.log('error', error);
         });
     }

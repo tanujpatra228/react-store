@@ -1,50 +1,36 @@
-import EditIcon from '@mui/icons-material/Edit';
-import axios from "axios";
-import { useEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from 'react';
+import LoadingButton from '@mui/lab/LoadingButton';
+import { Typography, Container, Box, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Avatar, IconButton, Badge } from '@mui/material';
+import axios from 'axios';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import { useDispatch, useSelector } from 'react-redux';
+import { actionCreators } from '../../store';
+import { toast } from 'react-toastify';
 
 const Profile = () => {
-    const profileForm = useRef();
-    const nameField = useRef();
-    const emailField = useRef();
-    const dobField = useRef();
-    const genderMaleField = useRef();
-    const genderFemaleField = useRef();
-    const imageField = useRef();
-    const profileImage = useRef();
-    const navigate = useNavigate();
-    const auth = useSelector(store => store.auth.currUser);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(()=>{
-        if (!Object.keys(auth).length) {
-            navigate('/login');
-        } else {
-            getUserProfile();
-        }
-    }, [auth, navigate]);
+    const profileImageField = useRef();
+    const [avatarImage, setAvatarImage] = useState('');
+    const auth = useSelector(store => store.auth.currUser);
+    const dispatch = useDispatch();
 
     const setUserData = (user=null) => {
         if(user !== null){
-            nameField.current.value = user.name;
-            emailField.current.value = user.email;
-            dobField.current.value = user.birth_date;
-
-            // Gender
-            if(user.gender === 'Male') {
-                genderMaleField.current.checked = true;
-            } else {
-                genderFemaleField.current.checked = true;
-            }
+            formik.setFieldValue('name', user.name);
+            formik.setFieldValue('email', user.email);
+            formik.setFieldValue('birth_date', user.birth_date);
+            formik.setFieldValue('gender', user.gender);
 
             // Profile image
             let imgSrc = (user.image.includes('/')) ? `${user.image}` : `${process.env.REACT_APP_IMG_ROOT}${user.image}`;
-            profileImage.current.src = (user.image) ? `${imgSrc}` : 'https://via.placeholder.com/150';
+            imgSrc = (user.image) ? `${imgSrc}` : 'https://via.placeholder.com/150';
+            setAvatarImage(imgSrc);
         }
     }
 
-    const getUserProfile = () => {
+    const getUserProfile = (isUpdated=false) => {
         axios.get(`${process.env.REACT_APP_API_ROOT}/getUserProfile`, {
             headers: {
                 'Authorization': `Bearer ${auth.token}`,
@@ -54,115 +40,205 @@ const Profile = () => {
             // Set user data if available
             if (res.data.status){
                 let {user} = res.data;
+                isUpdated && dispatch(actionCreators.UpdateUserData(user));
                 setUserData(user);
+            } else {
+                toast.error(`Can not fetch data, ${res.data.message || ''}`);
             }
         }).catch((error) => {
-            console.log('error', error.message);
+            toast.error(`Something went wrong! ${error.message}`);
+            console.log('error', error);
         });
     }
 
-    const updateUser = (e) => {
-        e.preventDefault();
+    const handleSubmit = (values) => {
         setIsSubmitting(true);
-
         const formData = new FormData();
-        formData.append('name', nameField.current.value);
-        formData.append('email', emailField.current.value);
-        // formData.append('birth_date', dobField.current.value); // DOB update not supported in API
-        // formData.append('gender', genderMaleField.current.checked ? 'Male' : 'Female'); // Gender update not supported in API
-        imageField.current?.files[0] && formData.append('image', imageField.current.files[0]);
+        formData.append('name', values.name);
+        formData.append('email', values.email);
+        formData.append('birth_date', values.birth_date);
+        formData.append('gender', values.gender);
+        console.log('values.image', values.image);
+        values.image && formData.append('image', values.image);
         formData.append('_method', 'PUT');
 
         axios.post(`${process.env.REACT_APP_API_ROOT}/profileUpdate/${auth.user.id}`, formData, {
             headers: {
                 'Authorization': `Bearer ${auth.token}`,
             }
-          }).then(res => {
+        }).then((res) => {
             if (res.data.status) {
-                alert(res.data.message);
-                getUserProfile();
+                toast.success('Profile Updated!');
+                getUserProfile(true);
             } else {
+                toast.error(res.data.message);
                 alert(res.data.message);
             }
             setIsSubmitting(false);
         }).catch(error => {
-            console.log('error', error.message);
+            toast.error(`Something went wrong! ${error.message}`);
+            console.log('error', error);
             setIsSubmitting(false);
         });
+    };
+
+    const formik = useFormik({
+        // Initial values
+        initialValues: {
+            name: '',
+            email: '',
+            birth_date: ' ',
+            gender: 'Male',
+            image: null,
+        },
+
+        // Validation
+        validationSchema: Yup.object({
+            name: Yup.string().required('Please enter Name'),
+            email: Yup.string().required('Please enter Email').email('Invalid email'),
+            birth_date: Yup.string().trim().required('Please enter Birthdate'),
+            gender: Yup.string()
+        }),
+
+        // on Submit
+        onSubmit: (values) => {
+            handleSubmit(values);
+        }
+    });
+
+    const getImgData = () => {
+        const file = formik.values.image || null;
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(){
+                setAvatarImage(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
     }
 
+
+    useEffect(()=>{
+        getUserProfile();
+    },[]);
+
+    useEffect(()=>{
+        getImgData();   // get image preview
+    }, [getImgData, formik.values.image]);
+
     return (
-        <>
-            {
-                Object.keys(auth).length && (
-                    <>
-                        <div className="register">
-                            <div className="w-full max-w-xs mx-auto">
-                                <form encType="multipart/form-data" className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" onSubmit={updateUser} ref={profileForm}>
-                                    <h2 className="text-xl font-semibold mb-10 text-center">Profile</h2>
-                                    <div>
-                                        <div className='w-24 h-24 mx-auto bg-gray-400 rounded-full cursor-pointer relative'>
-                                            <img
-                                                src={`${auth?.user.image}`}
-                                                alt={auth?.user.name}
-                                                className="rounded-full"
-                                                onError={(e) => e.target.src = 'https://via.placeholder.com/150'}
-                                                onClick={() => imageField.current.click()}
-                                                ref={profileImage}
-                                            />
-                                            <EditIcon className='absolute top-[70px] left-[70px] z-10' />
-                                        </div>
-                                        <input type='file' id='image' accept="image/png, image/jpeg" name='image' style={{ display: 'none' }} ref={imageField} />
-                                    </div>
-                                    <div className="mb-4">
-                                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
-                                            Name
-                                        </label>
-                                        <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" type="text" placeholder="Name" ref={nameField} />
-                                    </div>
+        <Container component="div" maxWidth="xs">
+            <Box
+                sx={{
+                    marginTop: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                }}
+            >
+                <Typography component="h1" variant="h5" sx={{mb: 2}}>
+                    Profile
+                </Typography>
+                <IconButton
+                    onClick={() => profileImageField.current.querySelector('input[type="file"]').click()}
+                    sx={{ p: 0 }}
+                >
+                    <Badge
+                        overlap="circular"
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        badgeContent={
+                            <CameraAltIcon sx={{backgroundColor: '#fff', borderRadius: 50, p: 0.5}} />
+                        }
+                    >
+                        <Avatar
+                            alt="Profile Image"
+                            src={avatarImage}
+                            sx={{ width: 70, height: 70 }}
+                        />
+                    </Badge>
+                </IconButton>
+                <Box component="form" onSubmit={formik.handleSubmit} noValidate sx={{ mt: 1 }}>
 
-                                    <div className="mb-4">
-                                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                                            Email
-                                        </label>
-                                        <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="email" type="email" placeholder="Email" ref={emailField} />
-                                    </div>
+                    {/* Image */}
+                    <TextField
+                        required
+                        name="image"
+                        label="image"
+                        type="file"
+                        id="image"
+                        sx={{display: 'none'}}
+                        ref={profileImageField}
+                        onChange={(e) => formik.setFieldValue('image', e.currentTarget.files[0])}
+                        error={Boolean(formik.touched.image && formik.errors.image)}
+                        helperText={formik.touched.image && formik.errors.image}
+                    />
 
-                                    <div className="mb-4">
-                                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="DOB">
-                                            DOB
-                                        </label>
-                                        <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 disabled:text-gray-500 leading-tight focus:outline-none focus:shadow-outline" id="DOB" type="date" placeholder="DOB" disabled ref={dobField} />
-                                    </div>
+                    {/* Name */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="name"
+                        label="Name"
+                        name="name"
+                        autoFocus
+                        value={formik.values.name}
+                        onChange={formik.handleChange}
+                        error={formik.touched.name && Boolean(formik.errors.name)}
+                        helperText={formik.touched.name && formik.errors.name}
+                    />
 
-                                    <div className="mb-4">
-                                        <label className="block text-gray-700 text-sm font-bold mb-2">
-                                            Gender
-                                        </label>
-                                        <div className="flex items-center gap-5">
-                                            <div>
-                                                <input type='radio' id='male' name='gender' disabled value='male' ref={genderMaleField} />
-                                                <label htmlFor="male" className="ml-2 text-gray-500">Male</label>
-                                            </div>
-                                            <div>
-                                                <input type='radio' id='female' name='gender' disabled value='female' ref={genderFemaleField} />
-                                                <label htmlFor="female" className="ml-2 text-gray-500">Female</label>
-                                            </div>
-                                        </div>
-                                    </div>
+                    {/* Email */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="email"
+                        label="Email Address"
+                        name="email"
+                        value={formik.values.email}
+                        onChange={formik.handleChange}
+                        error={formik.touched.email && Boolean(formik.errors.email)}
+                        helperText={formik.touched.email && formik.errors.email}
+                    />
 
-                                    <div className="flex items-center justify-between">
-                                        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" disabled={isSubmitting}>
-                                            Save
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </>
-                )
-            }
-        </>
+                    {/* Date of Birth */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        name="birth_date"
+                        label="DOB"
+                        type="date"
+                        id="birth_date"
+                        disabled
+                        value={formik.values.birth_date}
+                        onChange={formik.handleChange}
+                        error={Boolean(formik.touched.birth_date && formik.errors.birth_date)}
+                        helperText={formik.touched.birth_date && formik.errors.birth_date}
+                    />
+
+                    {/* Gender */}
+                    <FormControl>
+                        <FormLabel>Gender</FormLabel>
+                        <RadioGroup row name="gender">
+                            <FormControlLabel value="Male" disabled checked={formik.values.gender === 'Male'} onChange={formik.handleChange} control={<Radio />} label="Male" />
+                            <FormControlLabel value="Female" disabled checked={formik.values.gender === 'Female'} onChange={formik.handleChange} control={<Radio />} label="Female" />
+                        </RadioGroup>
+                    </FormControl>
+
+                    <LoadingButton
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        loading={isSubmitting}
+                        sx={{mt: 2}}
+                    >
+                        Profile
+                    </LoadingButton>
+                </Box>
+            </Box>
+        </Container>
     );
 }
 

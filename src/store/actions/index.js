@@ -15,3 +15,12 @@ export const LogOut = () => {
         });
     }
 }
+
+export const UpdateUserData = (user) => {
+    return (dispatch) => {
+        dispatch({
+            type: 'UPDATE',
+            payload: user
+        });
+    }
+}

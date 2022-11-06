@@ -1,150 +1,243 @@
-import axios from "axios";
-import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from 'react';
+import LoadingButton from '@mui/lab/LoadingButton';
+import { Typography, Container, Box, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Avatar, IconButton, Badge } from '@mui/material';
+import axios from 'axios';
+import { useNavigate, Link } from 'react-router-dom';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import { toast } from 'react-toastify';
 
 const Register = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const regiForm = useRef();
-    const nameField = useRef();
-    const emailField = useRef();
-    const passwordField = useRef();
-    const dobField = useRef();
-    const genderMaleField = useRef();
-    const passwordConfField = useRef();
-    const imageField = useRef();
+    const [avatarImage, setAvatarImage] = useState('');
+    const profileImageField = useRef();
     const navigate = useNavigate();
+    const allowed_formats = [
+        "image/jpg",
+        "image/jpeg",
+        "image/png",
+    ];
 
-    const basicValidation = (value) => {
-        console.log('value', value);
-        let isValid = false;
-        if (value.name === ''){
-            alert('Name is reuired!');
-        } else if (value.email === ''){
-            alert('Email is reuired!');
-        } else if (value.dob === ''){
-            alert('Please select DOB!');
-        } else if (value.password <= 0){
-            alert('Please enter password!');
-        } else if (value.passwordConf === null){
-            alert('Please enter same password!');
-        } else if (value.password !== value.passwordConf){
-            alert('Passwords must match!');
-        } else {
-            isValid = true;
-        }
-        return isValid;
-    }
-
-    const registerUser = (e) => {
-        e.preventDefault();
-
-        if (!basicValidation({
-            name: nameField.current.value,
-            email: emailField.current.value,
-            dob: dobField.current.value,
-            password: passwordField.current.value,
-            passwordConf: passwordConfField.current.value,
-        })) {return;}
-
+    const handleSubmit = (values) => {
         setIsSubmitting(true);
-
         const formData = new FormData();
-        formData.append('name', nameField.current.value);
-        formData.append('email', emailField.current.value);
-        formData.append('birth_date', dobField.current.value);
-        formData.append('gender', genderMaleField.current.checked ? 'Male' : 'Female');
-        formData.append('password', passwordField.current.value);
-        formData.append('password_confirmation', passwordConfField.current.value);
-        formData.append('image', imageField.current?.files[0] || null);
+        formData.append('name', values.name);
+        formData.append('email', values.email);
+        formData.append('birth_date', values.birth_date);
+        formData.append('gender', values.gender);
+        formData.append('password', values.password);
+        formData.append('password_confirmation', values.password_confirmation);
+        values.image && formData.append('image', values.image);
 
-        axios.post(`${process.env.REACT_APP_API_ROOT}/register`, formData).then(res => {
-            if (res.data.status) {
-                alert(res.data.message);
-                regiForm.current.reset();
-                navigate('/login');
-            } else {
-                alert(res.data.message);
-            }
-            setIsSubmitting(false);
-        }).catch(error => {
-            console.log('error', error.message);
-            setIsSubmitting(false);
-        });
+        axios.post(`${process.env.REACT_APP_API_ROOT}/register`, formData)
+            .then(res => {
+                if (res.data.status) {
+                    toast.success(res.data.message, {
+                        autoClose: 2000,
+                    });
+                    setTimeout(() => {
+                        navigate('/login');
+                    }, 3000);
+                    formik.resetForm();
+                } else {
+                    toast.error(res.data.message);
+                }
+                setIsSubmitting(false);
+            })
+            .catch(error => {
+                toast.error(`Something went wrong! ${error.message}`);
+                console.log('error', error);
+                setIsSubmitting(false);
+            });
+    };
+
+    const formik = useFormik({
+        // Initial values
+        initialValues: {
+            name: '',
+            email: '',
+            birth_date: ' ',
+            gender: 'Male',
+            password: '',
+            password_confirmation: '',
+            image: null,
+        },
+
+        // Validation
+        validationSchema: Yup.object({
+            name: Yup.string().required('Please enter Name'),
+            email: Yup.string().required('Please enter Email').email('Invalid email'),
+            birth_date: Yup.string().trim().required('Please enter Birthdate'),
+            gender: Yup.string(),
+            password: Yup.string().required('Please enter Password').matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/, 'Password must contain minimum 8 characters, at least one uppercase letter, one lowercase letter and one number'),
+            password_confirmation: Yup.string().oneOf([Yup.ref('password'), null], 'Passwords must match'),
+        }),
+
+        // on Submit
+        onSubmit: (values) => {
+            handleSubmit(values);
+        }
+    });
+
+    const setImagePreview = () => {
+        const file = formik.values.image || null;
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(){
+                setAvatarImage(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
     }
-    return(
-        <>
-            <div className="register">
-                <div className="w-full max-w-xs mx-auto">
-                    <form encType="multipart/form-data" className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" onSubmit={(e) => registerUser(e)} ref={regiForm}>
-                        <h2 className="text-xl font-semibold mb-10">Register</h2>
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
-                                Name
-                            </label>
-                            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" type="text" placeholder="Name" ref={nameField} />
-                        </div>
 
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                                Email
-                            </label>
-                            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="email" type="email" placeholder="Email" ref={emailField} />
-                        </div>
+    useEffect(()=>{
+        setImagePreview();   // get image preview
+    }, [formik.values.image]);
 
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="DOB">
-                                DOB
-                            </label>
-                            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="DOB" type="date" placeholder="DOB" ref={dobField} />
-                        </div>
+    return (
+        <Container component="div" maxWidth="xs">
+            <Box
+                sx={{
+                    marginTop: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                }}
+            >
+                <Typography component="h1" variant="h5" sx={{mb: 2}}>
+                    Register
+                </Typography>
+                <IconButton onClick={() => profileImageField.current.click()} sx={{ p: 0 }}>
+                    <Badge
+                        overlap="circular"
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        badgeContent={
+                            <CameraAltIcon sx={{backgroundColor: '#fff', borderRadius: 50, p: 0.5}} />
+                        }
+                    >
+                        <Avatar
+                            alt="User Image"
+                            src={avatarImage}
+                            sx={{ width: 70, height: 70 }}
+                        />
+                    </Badge>
+                </IconButton>
+                <Box component="form" onSubmit={formik.handleSubmit} noValidate sx={{ mt: 1 }}>
 
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2">
-                                Gender
-                            </label>
-                            <div className="flex items-center gap-5">
-                                <div>
-                                    <input type='radio' id='male' name='gender' defaultChecked value='male' ref={genderMaleField} />
-                                    <label htmlFor="male" className="ml-2">Male</label>
-                                </div>
-                                <div>
-                                    <input type='radio' id='female' name='gender' value='female' />
-                                    <label htmlFor="female" className="ml-2">Female</label>
-                                </div>
-                            </div>
-                        </div>
+                    {/* Image */}
+                    <input
+                        required
+                        name="image"
+                        label="image"
+                        type="file"
+                        id="image"
+                        accept={allowed_formats.join()}
+                        style={{display: 'none'}}
+                        ref={profileImageField}
+                        onChange={(e) => formik.setFieldValue('image', e.currentTarget.files[0])}
+                    />
 
-                        <div className="mb-6">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-                                Password
-                            </label>
-                            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password" placeholder="******************" ref={passwordField} />
-                        </div>
+                    {/* Name */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="name"
+                        label="Name"
+                        name="name"
+                        autoFocus
+                        value={formik.values.name}
+                        onChange={formik.handleChange}
+                        error={formik.touched.name && Boolean(formik.errors.name)}
+                        helperText={formik.touched.name && formik.errors.name}
+                    />
 
-                        <div className="mb-6">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password-conf">
-                                Password Confirmation
-                            </label>
-                            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password-conf" type="password" placeholder="******************" ref={passwordConfField} />
-                        </div>
+                    {/* Email */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="email"
+                        label="Email Address"
+                        name="email"
+                        autoFocus
+                        value={formik.values.email}
+                        onChange={formik.handleChange}
+                        error={formik.touched.email && Boolean(formik.errors.email)}
+                        helperText={formik.touched.email && formik.errors.email}
+                    />
 
-                        <div className="mb-6">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-                                Image
-                            </label>
-                            <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="image" type="file" ref={imageField} />
-                        </div>
+                    {/* Date of Birth */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        name="birth_date"
+                        label="DOB"
+                        type="date"
+                        id="birth_date"
+                        value={formik.values.birth_date}
+                        onChange={formik.handleChange}
+                        error={Boolean(formik.touched.birth_date && formik.errors.birth_date)}
+                        helperText={formik.touched.birth_date && formik.errors.birth_date}
+                    />
 
-                        <div className="flex items-center justify-between">
-                            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" disabled={isSubmitting}>
-                                Register
-                            </button>
-                            <Link to='/login' className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">Login</Link>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </>
+                    {/* Gender */}
+                    <FormControl>
+                        <FormLabel>Gender</FormLabel>
+                        <RadioGroup row name="gender">
+                            <FormControlLabel value="Male" checked={formik.values.gender === 'Male'} onChange={formik.handleChange} control={<Radio />} label="Male" />
+                            <FormControlLabel value="Female" checked={formik.values.gender === 'Female'} onChange={formik.handleChange} control={<Radio />} label="Female" />
+                        </RadioGroup>
+                    </FormControl>
+
+                    {/* Password */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        name="password"
+                        label="Password"
+                        type="password"
+                        id="password"
+                        value={formik.values.password}
+                        onChange={formik.handleChange}
+                        error={Boolean(formik.touched.password && formik.errors.password)}
+                        helperText={formik.touched.password && formik.errors.password}
+                    />
+                    
+                    {/* Password Confirmation */}
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        name="password_confirmation"
+                        label="Re-enter Password"
+                        type="password"
+                        id="password"
+                        value={formik.values.password_confirmation}
+                        onChange={formik.handleChange}
+                        error={Boolean(formik.touched.password_confirmation && formik.errors.password_confirmation)}
+                        helperText={formik.touched.password_confirmation && formik.errors.password_confirmation}
+                    />
+
+                    <LoadingButton
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        loading={isSubmitting}
+                    >
+                        Register
+                    </LoadingButton>
+                </Box>
+                <Box component="div" sx={{ mt: 2 }}>
+                    <Link to="/login">
+                        Already have an account? <span className='underline'>Login</span>
+                    </Link>
+                </Box>
+            </Box>
+        </Container>
     );
 }
 

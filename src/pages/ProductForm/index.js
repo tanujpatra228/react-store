@@ -1,88 +1,61 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from "react-redux";
-import { TextField, Button } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { TextField, Container, Box, Typography, IconButton, Badge, Stack } from "@mui/material";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from 'axios';
-
-const useQuery = () => {
-    const { search } = useLocation();
-    return React.useMemo(() => new URLSearchParams(search), [search]);
-}
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import { useFormik } from 'formik';
+import { LoadingButton } from '@mui/lab';
+import * as Yup from 'yup';
+import { toast } from 'react-toastify';
 
 const ProductForm = () => {
-    const auth = useSelector(store => store.auth);
+    const auth = useSelector(store => store.auth.currUser);
     const navigate = useNavigate();
-    const search = useQuery();
+    const productImageField = useRef();
+    const { productId } = useParams();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [productId, setProductId] = useState(search.get('id'));
-    const [product, setProduct] = useState({
-        name: '',
-        description: '',
-        mrp: 0,
-        selling: 0,
-        img: null
-    });
+    const [productImageSrc, setProductImageSrc] = useState('');
 
-    useEffect(() => {
-        if (!Object.keys(auth).length) {
-            navigate('/login');
-        } else {
-            getProductData();
-        }
-    }, [auth, navigate]);
-
-    const basicValidation = (value) => {
-        let isValid = false;
-        if (value.name === ''){
-            alert('Name is reuired');
-        } else if (value.description === ''){
-            alert('Description is reuired');
-        } else if (value.mrp <= 0){
-            alert('MRP must be greater then 0');
-        } else if (value.selling <= 0){
-            alert('Selling price must be greater then 0');
-        } else if (value.img === null){
-            alert('Please select product image');
-        } else {
-            isValid = true;
-        }
-        return isValid;
-    }
-
-    const addProduct = () => {
-        if(!basicValidation(product)) {return;}
-
+    const addProduct = (values) => {
         setIsSubmitting(true);
 
         const formData = new FormData();
-        formData.append('name', product.name);
-        formData.append('description', product.description);
-        formData.append('mrp', product.mrp);
-        formData.append('selling', product.selling);
-        product.img && formData.append('image', product.img);
+        formData.append('name', values.name);
+        formData.append('description', values.description);
+        formData.append('mrp', values.mrp);
+        formData.append('selling', values.selling);
+        values.image && formData.append('image', values.image);
 
         axios.post(`${process.env.REACT_APP_API_ROOT}/products`, formData, {
             headers: {
                 'Authorization': `Bearer ${auth.token}`,
             }
-          }).then(res => {
+        }).then((res) => {
             if (res.data.status) {
-                setProduct({
-                    name: res.data.data.name,
-                    description: res.data.data.description,
-                    mrp: res.data.data.mrp,
-                    selling: res.data.data.selling,
-                    img: res.data.data.img
-                });
-                alert(res.data.message.trim());
+                toast.success(`${res.data.message.trim()}`);
             } else {
-                alert(res.data.message);
+                toast.error(`${res.data.message.trim()}`);
             }
             setIsSubmitting(false);
-        }).catch(error => {
-            console.log('error', error.message);
+        }).catch((error) => {
+            toast.error(`Something went wrong! ${error.message}`);
+            console.log('error', error);
             setIsSubmitting(false);
         });
+    }
+
+    const setProductData = (details = null) => {
+        if(details !== null){
+            formik.setFieldValue('name', details.name);
+            formik.setFieldValue('description', details.description);
+            formik.setFieldValue('mrp', details.mrp);
+            formik.setFieldValue('selling', details.selling);
+
+            // Product image
+            let imgSrc = (details?.image) ? `${details.img}` : 'https://via.placeholder.com/300';
+            setProductImageSrc(imgSrc);
+        }
     }
 
     const getProductData = () => {
@@ -93,30 +66,25 @@ const ProductForm = () => {
             }
         }).then((res)=>{
             if (res.data.status) {
-                setProduct({
-                    name: res.data.data.name,
-                    description: res.data.data.description,
-                    mrp: res.data.data.mrp,
-                    selling: res.data.data.selling,
-                    img: res.data.data.img
-                });
+                setProductData(res.data.data);
+            } else {
+                toast.error(`Something went wrong!`);
             }
         }).catch((error) => {
-            console.log('error', error.message);
+            toast.error(`Something went wrong! ${error.message}`);
+            console.log('error', error);
         });
     }
 
-    const updateProduct = () => {
-        if(!basicValidation(product)) {return;}
-
+    const updateProduct = (values) => {
         setIsSubmitting(true);
 
         const formData = new FormData();
-        formData.append('name', product.name);
-        formData.append('description', product.description);
-        formData.append('mrp', product.mrp);
-        formData.append('selling', product.selling);
-        (product.img !== null) && (typeof product.img !== 'string') && formData.append('image', product.img);
+        formData.append('name', values.name);
+        formData.append('description', values.description);
+        formData.append('mrp', values.mrp);
+        formData.append('selling', values.selling);
+        formData.append('image', values.image);
         formData.append('_method', 'PUT');
 
         axios.post(`${process.env.REACT_APP_API_ROOT}/products/${productId}`, formData, {
@@ -126,48 +94,187 @@ const ProductForm = () => {
           }).then(res => {
             if (res.data.status) {
                 getProductData();
-                alert(res.data.message.trim());
+                toast.success(`${res.data.message.trim()}`);
             } else {
-                alert(res.data.message);
+                toast.error(`${res.data.message.trim()}`);
             }
             setIsSubmitting(false);
         }).catch(error => {
-            console.log('error', error.message);
+            toast.error(`Something went wrong! ${error.message}`);
+            console.log('error', error);
             setIsSubmitting(false);
         });
     }
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+    const handleSubmit = (values) => {
         if (!productId) {
-            addProduct();
+            addProduct(values);
         } else {
-            updateProduct();
+            updateProduct(values);
         }
     }
 
+    const formik = useFormik({
+        // Initial values
+        initialValues: {
+            name: '',
+            description: '',
+            mrp: 0,
+            selling: 0,
+            image: ''
+        },
+
+        // Validation
+        validationSchema: Yup.object({
+            name: Yup.string().required("Please enter product Title"),
+            description: Yup.string().required("Please enter description"),
+            mrp: Yup.number().positive("MRP must be a positive number").required("Please add MRP"),
+            selling: Yup.number().positive("Selling price must be a positive number").required("Please add Selling Price"),
+            image: Yup.mixed().required("Please add product image"),
+        }),
+
+        // On Submit
+        onSubmit: (values) => {
+            handleSubmit(values);
+        }
+    });
+
+    const setImagePreview = () => {
+        const file = formik.values.image || null;
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(){
+                setProductImageSrc(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    useEffect(() => {
+        getProductData();
+    }, [auth, navigate]);
+
+    useEffect(()=>{
+        setImagePreview();   // set image preview
+    }, [setImagePreview, formik.values.image]);
+
     return(
-        <div className="w-full">
-            <h2 className="font-medium text-lg capitalize">Product</h2>
-            <div className="flex justify-center align-middle">
-                <div className="w-10/12 border rounded-lg shadow-lg p-5">
-                    <img src={`${product.img}`} className='w-80 min-h-[300px] mb-5 rounded-lg' alr={product.name} onError={(e) => e.target.src='https://via.placeholder.com/300'} />
-                    <form className='flex gap-5 flex-col' onSubmit={(e) => handleSubmit(e)}>
-                        <div className='flex gap-5'>
-                            <label htmlFor='image' className='text-slate-600'>Product Image</label>
-                            <input type="file" accept="image/png, image/jpeg" className='w-1/2 flex-1' id="image" onChange={(e) => setProduct({...product, img: e.target.files[0]})}/>
-                        </div>
-                        <TextField id="name" label="Product Name" variant="outlined" value={product.name} onChange={(e) => setProduct({...product, name: e.target.value})}/>
-                        <TextField id="description" label="Description" multiline rows={4} maxRows={4} variant="outlined" value={product.description} onChange={(e) => setProduct({...product, description: e.target.value})} />
-                        <div className='flex gap-5'>
-                            <TextField type="number" className='w-1/2' id="mrp" label="MRP" variant="outlined" value={product.mrp} onChange={(e) => setProduct({...product, mrp: e.target.value})}/>
-                            <TextField type="number" className='w-1/2' id="selling" label="Selling" variant="outlined" value={product.selling} onChange={(e) => setProduct({...product, selling: e.target.value})} />
-                        </div>
-                        <Button className='w-1/2 mx-auto' variant="contained" type="submit" disabled={isSubmitting}>Submit</Button>
-                    </form>
-                </div>
-            </div>
-        </div>
+        <Container component="div" maxWidth="md">
+            <Box
+                sx={{
+                    marginTop: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                }}
+            >
+                <Typography component="h1" variant="h5" sx={{mb: 2}}>
+                    Add New Product
+                </Typography>
+                <IconButton
+                    onClick={() => productImageField.current.click()}
+                    sx={{ p: 0 }}
+                >
+                    <Badge
+                        overlap="circular"
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        badgeContent={
+                            <CameraAltIcon sx={{backgroundColor: '#fff', borderRadius: 50, p: 0.5}} />
+                        }
+                    >
+                        <img
+                            src={productImageSrc}
+                            className={`w-80 min-h-[300px] mb-5 rounded-lg ${(formik.touched.image && formik.errors.image) ? 'border border-red-500' : '' }`}
+                            alr={formik.values.name || ''}
+                            onError={(e) => e.target.src='https://via.placeholder.com/300'}
+                        />
+                    </Badge>
+                </IconButton>
+
+                { !productId && (<span className='text-red-500 text-xs'>{(formik.touched.image && formik.errors.image) ? `${formik.errors.image}` : ''}</span>) }
+                { productId && (<span className='text-red-500 text-xs'>{(formik.touched.image && formik.errors.image) ? `Re-select image: API does not support product update without image` : ''}</span>) }
+
+                <Box component="form" onSubmit={formik.handleSubmit} noValidate sx={{ mt: 1 }}>
+                    {/* Image */}
+                    <input
+                        type="file"
+                        accept="image/png, image/jpeg"
+                        style={{display: 'none'}}
+                        id="image"
+                        name="image"
+                        ref={productImageField}
+                        onChange={(e) => formik.setFieldValue('image', e.currentTarget.files[0])}
+                    />
+
+                    {/* Name */}
+                    <TextField
+                        id="name"
+                        label="Product Name"
+                        variant="outlined"
+                        margin="normal"
+                        fullWidth
+                        value={formik.values.name}
+                        onChange={formik.handleChange}
+                        error={Boolean(formik.touched.name && formik.errors.name)}
+                        helperText={formik.touched.name && formik.errors.name}
+                    />
+
+                    {/* Description */}
+                    <TextField
+                        id="description"
+                        label="Description"
+                        margin="normal"
+                        fullWidth
+                        multiline
+                        rows={4} maxRows={4}
+                        variant="outlined"
+                        value={formik.values.description}
+                        onChange={formik.handleChange}
+                        error={Boolean(formik.touched.description && formik.errors.description)}
+                        helperText={formik.touched.description && formik.errors.description}
+                    />
+
+                    {/* Pricing */}
+                    <Stack spacing={2}>
+                        {/* MRP */}
+                        <TextField
+                            type="number"
+                            id="mrp"
+                            margin="normal"
+                            label="MRP"
+                            variant="outlined"
+                            value={formik.values.mrp}
+                            onChange={formik.handleChange}
+                            error={Boolean(formik.touched.mrp && formik.errors.mrp)}
+                            helperText={formik.touched.mrp && formik.errors.mrp}
+                        />
+
+                        {/* Selling */}
+                        <TextField
+                            type="number"
+                            id="selling"
+                            margin="normal"
+                            label="Selling"
+                            variant="outlined"
+                            value={formik.values.selling}
+                            onChange={formik.handleChange}
+                            error={Boolean(formik.touched.selling && formik.errors.selling)}
+                            helperText={formik.touched.selling && formik.errors.selling}
+                        />
+                    </Stack>
+
+                    <LoadingButton
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        loading={isSubmitting}
+                        sx={{mt: 2}}
+                    >
+                        {productId ? 'Save' : 'Publish'}
+                    </LoadingButton>
+                </Box>
+            </Box>
+        </Container>
     );
 }
 

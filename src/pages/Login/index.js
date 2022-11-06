@@ -1,75 +1,120 @@
-import axios from "axios";
-import { useRef, useState } from "react";
-import { useDispatch } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
-import { actionCreators } from "../../store";
+import { useState } from 'react';
+import LoadingButton from '@mui/lab/LoadingButton';
+import { Typography, Container, Box, TextField } from '@mui/material';
+import axios from 'axios';
+import { actionCreators } from '../../store';
+import { useNavigate, Link } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { useFormik } from 'formik';
+import * as Yup from 'yup';
+import { toast } from 'react-toastify';
 
 const Login = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const emailField = useRef();
-    const passwordField = useRef();
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    
-    const LogiUser = (e) => {
-        e.preventDefault();
-        let email = emailField.current.value;
-        let password = passwordField.current.value;
 
-        if (email === '' ) {
-            alert('Enter email');
-            return;
-        }
-        if (password === '') {
-            alert('Enter Password');
-            return;
-        }
-        
+    const handleSubmit = (values) => {
         setIsSubmitting(true);
-        // Login
         axios.post(`${process.env.REACT_APP_API_ROOT}/login`,{
-            email: email,
-            password: password
+            email: values.email,
+            password: values.password
         }).then((res)=>{
             if (!res.data.status){
-                alert(res.data.message);
+                toast.error(res.data.message);
             } else {
                 dispatch(actionCreators.LogIn(res.data));
-                alert('Login Success!');
-                navigate('/profile');
+                toast.success('Login Success!', {
+                    autoClose: 2000,
+                });
+                setTimeout(() => {
+                    navigate('/profile');
+                }, 3000);
             }
+            setIsSubmitting(false);
         }).catch((error) => {
+            toast.error(`Something went wrong! ${error.message}`);
             console.log('error', error);
+            setIsSubmitting(false);
         });
-        setIsSubmitting(false);
-    }
+    };
+
+    const formik = useFormik({
+        // Initial values
+        initialValues: {
+            email: '',
+            password: ''
+        },
+
+        // Validation
+        validationSchema: Yup.object({
+            email: Yup.string().required('Please enter Email').email('Invalid email'),
+            password: Yup.string().required('Please enter Password').matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$/, 'Password must contain minimum 8 characters, at least one uppercase letter, one lowercase letter and one number'),
+        }),
+
+        // on Submit
+        onSubmit: (values) => {
+            handleSubmit(values);
+        }
+    });
 
     return (
-        <>
-            <div className="w-full max-w-xs mx-auto">
-                <form className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" onSubmit={(e) => LogiUser(e)}>
-                    <h2 className="text-xl font-semibold mb-10">Login</h2>
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                            Email
-                        </label>
-                        <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="email" type="text" placeholder="Email" ref={emailField} />
-                    </div>
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-                            Password
-                        </label>
-                        <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" id="password" type="password" placeholder="******************" ref={passwordField} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" disabled={isSubmitting}>
-                            Login
-                        </button>
-                        <Link to='/register' className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">Register</Link>
-                    </div>
-                </form>
-            </div>
-        </>
+        <Container component="div" maxWidth="xs">
+            <Box
+                sx={{
+                    marginTop: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                }}
+            >
+                <Typography component="h1" variant="h5">
+                    Login
+                </Typography>
+                <Box component="form" onSubmit={formik.handleSubmit} noValidate sx={{ mt: 1 }}>
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="email"
+                        label="Email Address"
+                        name="email"
+                        autoFocus
+                        value={formik.values.email}
+                        onChange={formik.handleChange}
+                        error={formik.touched.email && Boolean(formik.errors.email)}
+                        helperText={formik.touched.email && formik.errors.email}
+                    />
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        name="password"
+                        label="Password"
+                        type="password"
+                        id="password"
+                        value={formik.values.password}
+                        onChange={formik.handleChange}
+                        error={Boolean(formik.touched.password && formik.errors.password)}
+                        helperText={formik.touched.password && formik.errors.password}
+                    />
+                    <LoadingButton
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        loading={isSubmitting}
+                    >
+                        Login
+                    </LoadingButton>
+                </Box>
+                
+                <Box component="div" sx={{ mt: 2 }}>
+                    <Link to="/register" className='text-right'>
+                        Don't have an account? <span className='underline'>Register</span>
+                    </Link>
+                </Box>
+            </Box>
+        </Container>
     );
 }
 
