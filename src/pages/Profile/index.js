@@ -24,7 +24,7 @@ const Profile = () => {
             formik.setFieldValue('gender', user.gender);
 
             // Profile image
-            let imgSrc = (user.image.includes('/')) ? `${user.image}` : `${process.env.REACT_APP_IMG_ROOT}${user.image}`;
+            let imgSrc = (user.image?.includes('/')) ? `${user.image}` : `${process.env.REACT_APP_IMG_ROOT}${user.image}`;
             imgSrc = (user.image) ? `${imgSrc}` : 'https://via.placeholder.com/150';
             setAvatarImage(imgSrc);
         }
@@ -151,7 +151,7 @@ const Profile = () => {
                         }
                     >
                         <Avatar
-                            alt="Profile Image"
+                            alt={auth?.user?.name || ''}
                             src={avatarImage}
                             sx={{ width: 70, height: 70 }}
                         />

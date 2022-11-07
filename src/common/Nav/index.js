@@ -31,7 +31,7 @@ function Nav() {
 
     const getAvatarImgSrc = () => {
         if (authUser && authUser.user) {
-            let src = (authUser.user && authUser.user?.image.includes('/images/')) ? authUser.user.image : `${process.env.REACT_APP_IMG_ROOT}${authUser.user.image}`;
+            let src = (authUser.user && authUser.user?.image?.includes('/images/')) ? authUser.user.image : `${process.env.REACT_APP_IMG_ROOT}${authUser.user?.image}`;
             setNavAvatarImg(src);
         }
     }
