@@ -59,7 +59,7 @@ const ProductForm = () => {
     }
 
     const getProductData = () => {
-        if (productId === null) {return;}
+        if (!productId) {return;}
         axios.get(`${process.env.REACT_APP_API_ROOT}/products/${productId}`, {
             headers: {
                 'Authorization': `Bearer ${auth.token}`,
